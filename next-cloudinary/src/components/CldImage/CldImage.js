@@ -1,35 +1,42 @@
-import Image from 'next/image';
+import Image from "next/image";
 
-import { createPlaceholderUrl, getPublicId } from '../../lib/cloudinary';
-import { cloudinaryLoader, transformationPlugins } from '../../loaders/cloudinary-loader';
+import { createPlaceholderUrl, getPublicId } from "../../lib/cloudinary";
+import {
+  cloudinaryLoader,
+  transformationPlugins,
+} from "../../loaders/cloudinary-loader";
 
-const CldImage = props => {
+const regex = new RegExp(
+  "(https?)://(res.cloudinary.com)/([^/]+)/(image|video|raw)/(upload|authenticated)/(.*)/(v[0-9]+)/(.+)(?:.[a-z]{3})?",
+  "gim"
+);
 
+const CldImage = (props) => {
   const CLD_OPTIONS = [];
 
   transformationPlugins.forEach(({ props = [] }) => {
-    props.forEach(prop => {
-      if ( CLD_OPTIONS.includes(prop) ) {
+    props.forEach((prop) => {
+      if (CLD_OPTIONS.includes(prop)) {
         throw new Error(`Option ${prop} already exists!`);
       }
       CLD_OPTIONS.push(prop);
     });
-  })
+  });
 
   // Construct the base Image component props by filtering out Cloudinary-specific props
 
   const imageProps = {};
 
   Object.keys(props)
-    .filter(key => !CLD_OPTIONS.includes(key))
-    .forEach(key => imageProps[key] = props[key]);
+    .filter((key) => !CLD_OPTIONS.includes(key))
+    .forEach((key) => (imageProps[key] = props[key]));
 
   // Construct Cloudinary-specific props by looking for values for any of the supported prop keys
 
   const cldOptions = {};
 
-  CLD_OPTIONS.forEach(key => {
-    if ( props[key] ) {
+  CLD_OPTIONS.forEach((key) => {
+    if (props[key]) {
       cldOptions[key] = props[key];
     }
   });
@@ -43,25 +50,36 @@ const CldImage = props => {
   //
   // https://nextjs.org/docs/api-reference/next/image#blurdataurl
 
-  if ( imageProps.placeholder ) {
+  if (imageProps.placeholder) {
     const publicId = getPublicId(props.src);
 
     imageProps.blurDataURL = createPlaceholderUrl({
       src: publicId,
-      placeholder: props.placeholder
+      placeholder: props.placeholder,
     });
 
-    if ( imageProps.placeholder !== 'blur' ) {
-      imageProps.placeholder = 'blur';
+    if (imageProps.placeholder !== "blur") {
+      imageProps.placeholder = "blur";
     }
+  }
+
+  if (props.src && useUrlTransformations) {
+    const groups = regex.exec(props.src);
+    const transformationStr = groups
+      .slice(1)
+      .find((i) => i.includes(_) && i.includes(","));
+    const transformations = transformationStr.split(",");
+    imageProps.transformations = transformations;
   }
 
   return (
     <Image
       {...imageProps}
-      loader={(options) => cloudinaryLoader({ ...imageProps, options }, cldOptions)}
+      loader={(options) =>
+        cloudinaryLoader({ ...imageProps, options }, cldOptions)
+      }
     />
   );
-}
+};
 
 export default CldImage;
